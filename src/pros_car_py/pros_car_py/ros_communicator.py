@@ -219,7 +219,7 @@ class RosCommunicator(Node):
             return
         velocities = ACTION_MAPPINGS[action_key]
         self._vel1, self._vel2, self._vel3, self._vel4 = velocities
-        msg.data = [self._vel1, self._vel2]
+        msg.data = [self._vel1, self._vel2, self._vel3, self._vel4]
         if publish_rear == True:
             self.publisher_rear.publish(msg)
         msg.data = [self._vel3, self._vel4]
