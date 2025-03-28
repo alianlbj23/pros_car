@@ -1,21 +1,9 @@
 # mode_app.py
 import urwid
-from pros_car_py.mode_manager import (
-    VehicleMode,
-    ArmMode,
-    CraneMode,
-    AutoNavMode,
-    AutoArmMode,
-)
+from pros_car_py.base_mode import MODE_REGISTRY
+from pros_car_py.mode_manager import load_and_register_modes
 
-MODES_REGISTRY = {
-    "mode_vehicle": ("Control Vehicle", VehicleMode),
-    "mode_arm": ("Manual Arm Control", ArmMode),
-    "mode_crane": ("Manual Crane Control", CraneMode),
-    "mode_auto_nav": ("Auto Navigation", AutoNavMode),
-    "mode_auto_arm": ("Automatic Arm Mode", AutoArmMode),
-}
-
+# Remove hardcoded MODES_REGISTRY - will use MODE_REGISTRY populated from CSV instead
 
 class ModeApp:
     def __init__(
@@ -31,6 +19,10 @@ class ModeApp:
 
         self.current_mode = None
 
+        # Register all modes from CSV
+        mode_count = load_and_register_modes()
+        print(f"Loaded {mode_count} modes from CSV configuration")
+
     def main(self):
         self.main_menu()
         self.loop.run()
@@ -38,7 +30,8 @@ class ModeApp:
     def main_menu(self):
         menu_items = [urwid.Text("Main Menu:")]
 
-        for mode_name, (label, mode_class) in MODES_REGISTRY.items():
+        # Use MODE_REGISTRY populated from CSV instead of MODES_REGISTRY
+        for mode_name, (label, mode_class) in MODE_REGISTRY.items():
             button = urwid.Button(
                 label, on_press=lambda _, m=mode_name: self.switch_mode(m)
             )
@@ -49,10 +42,10 @@ class ModeApp:
 
         menu_list = urwid.ListBox(urwid.SimpleFocusListWalker(menu_items))
         self.loop.widget = menu_list
-        # self.loop.unhandled_input = None
 
     def switch_mode(self, mode_name):
-        mode_info = MODES_REGISTRY.get(mode_name)
+        # Use MODE_REGISTRY here too
+        mode_info = MODE_REGISTRY.get(mode_name)
         if not mode_info:
             print(f"Mode '{mode_name}' not found.")
             return
@@ -61,6 +54,7 @@ class ModeApp:
             self.current_mode.exit()
 
         _, ModeClass = mode_info
+        # The factory function expects the app as argument
         self.current_mode = ModeClass(self)
         self.current_mode.enter()
 

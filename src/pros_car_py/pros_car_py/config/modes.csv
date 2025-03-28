@@ -1,0 +1,6 @@
+mode_id,display_name,controller,method,submodes,param_type,has_quit_handler,description
+mode_vehicle,Control Vehicle,car_controller,manual_control,none,none,false,Direct vehicle control
+mode_arm,Manual Arm Control,arm_controller,manual_control,0;1;2;3;4,int,false,Control individual arm joints
+mode_crane,Manual Crane Control,crane_controller,manual_control,0;1;2;3;4;5;6;99,int,false,Control crane positioning
+mode_auto_nav,Auto Navigation,car_controller,auto_control,manual_auto_nav;target_auto_nav;custom_nav,str,true,Autonomous navigation modes
+mode_auto_arm,Automatic Arm Mode,arm_controller,auto_control,auto_arm_human,str,true,Predefined arm movement sequences

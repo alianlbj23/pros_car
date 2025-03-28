@@ -1,0 +1,6 @@
+mode_id,display_name,controller_name,method_name,submodes,param_type,description
+mode_vehicle,Control Vehicle,car_controller,manual_control,none,none,Direct vehicle control with keyboard
+mode_arm,Manual Arm Control,arm_controller,manual_control,0;1;2;3;4,int,Manually control individual arm joints
+mode_crane,Manual Crane Control,crane_controller,manual_control,0;1;2;3;4;5;6;99,int,Control crane positioning
+mode_auto_nav,Auto Navigation,car_controller,auto_control,manual_auto_nav;target_auto_nav;custom_nav,str,Autonomous navigation modes
+mode_auto_arm,Automatic Arm Mode,arm_controller,auto_control,auto_arm_human,str,Predefined arm movement sequences
