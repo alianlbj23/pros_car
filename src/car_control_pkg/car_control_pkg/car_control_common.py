@@ -57,20 +57,24 @@ class CarControlPublishers:
         else:
             vel = get_action_mapping(action)
 
-        dir_code = ACTION_TO_PARA_01.get(action, 0xDD)
-        rpm = int(max(abs(v) for v in vel))
-        rpm = min(max(rpm, 0), 300)
-        upper_speed = (rpm >> 8) & 0xFF
-        lower_speed = rpm & 0xFF
 
-        data = bytearray([0xA1, dir_code, upper_speed, lower_speed])
-        crc = CarControlPublishers.calculate_crc(data)
-        data.append(crc)
-        data.append(0x0A)
-
-        CarControlPublishers.uart.write(data)
-        print(f"[UART] Sent: {data.hex()}")
-
+        if front_wheel_pub is None:
+            # Only rear wheel publisher is available
+            rear_msg = Float32MultiArray()
+            rear_msg.data = vel  # Use entire velocity array [0:4]
+            rear_wheel_pub.publish(rear_msg)
+            node.get_logger().debug(f"Publishing all control data to rear wheel: {vel}")
+        else:
+            # Both publishers are available
+            rear_msg = Float32MultiArray()
+            front_msg = Float32MultiArray()
+            front_msg.data = vel[0:4]
+            rear_msg.data = vel[0:4]
+            rear_wheel_pub.publish(rear_msg)
+            front_wheel_pub.publish(front_msg)
+            node.get_logger().debug(
+                f"Publishing split control data: front={vel[0:2]}, rear={vel[2:4]}"
+            )
 
 
 class BaseCarControlNode(Node):

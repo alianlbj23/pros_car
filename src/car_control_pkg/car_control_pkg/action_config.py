@@ -1,6 +1,12 @@
-# car_control_pkg/action_config.py
+# -*- coding: utf-8 -*-
+"""
+vel, rotate_vel為自走車PID數值, 可於arduino程式碼查看
 
-vel = 50.0
+於ros_receive_and_data_processing/AI_node.py使用
+
+前左、前右、後左、後右
+"""
+vel = 100.0
 vel_slow = 5.0
 rotate_vel = 50.0
 rotate_vel_slow = 3.0
