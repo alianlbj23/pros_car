@@ -83,7 +83,7 @@ def main():
 
     # Set up device options
     device_options = ""
-    for device in ["/dev/usb_front_wheel", "/dev/usb_rear_wheel", "/dev/usb_robot_arm"]:
+    for device in ["/dev/usb_front_wheel", "/dev/usb_rear_wheel", "/dev/usb_robot_arm", "/dev/ttyAMA0"]:
         if os.path.exists(device):
             device_options += f" --device={device}"
 
@@ -96,7 +96,7 @@ def main():
             f"{port_mapping} "
             f"{device_options} "
             f"{x11_args} "
-            f"--runtime=nvidia "
+            f"{gpu_flags} "  # Use detected GPU flags instead of hardcoded runtime
             f"--env-file .env "
             f'-v "{os.getcwd()}/src:/workspaces/src" '
             f"ghcr.io/screamlab/pros_car_docker_image:latest "
