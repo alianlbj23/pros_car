@@ -1,6 +1,7 @@
 global:
   joints_count: 7.0
-  arm_topic: /robot_arm
+  arm_topic: /robot_arm2
+  ur_topic: /robot_arm
   imu_receive_topic: /imu/data_raw
   yolo_object_offset_receive_topic: /yolo/object/offset
   angle_step: 5.0  # Amount to increase/decrease angle by with keyboard input

@@ -29,28 +29,20 @@ class ArmCummuteNode(Node):
             JointTrajectoryPoint, self.arm_params["global"]["arm_topic"], 10
         )
 
+        self.arm_pub2 = self.create_publisher(
+            JointTrajectoryPoint, self.arm_params["global"]["ur_topic"], 10
+        )
+
         self.rear_wheel_pub = self.create_publisher(
-            Float32MultiArray,
-            'car_C_rear_wheel',
-            10
+            Float32MultiArray, "car_C_rear_wheel", 10
         )
         self.front_wheel_pub = self.create_publisher(
-            Float32MultiArray,
-            'car_C_front_wheel',
-            10
+            Float32MultiArray, "car_C_front_wheel", 10
         )
 
-        self.goal_pose_pub = self.create_publisher(
-            PoseStamped,
-            'goal_pose_tmp',
-            10
-        )
+        self.goal_pose_pub = self.create_publisher(PoseStamped, "goal_pose_tmp", 10)
 
-        self.marker_pub = self.create_publisher(
-            Marker,
-            'goal_marker',
-            10
-        )
+        self.marker_pub = self.create_publisher(Marker, "goal_marker", 10)
 
         # --- Add IMU Subscriber ---
         self.latest_imu_data = None
@@ -86,12 +78,11 @@ class ArmCummuteNode(Node):
         self.amcl_sub = self.create_subscription(
             PoseWithCovarianceStamped, "/amcl_pose", self._amcl_callback, 10
         )
-        
-    
+
     def _amcl_callback(self, msg):
         """Store latest AMCL pose"""
         self.latest_amcl_pose = msg
-    
+
     def get_car_position_and_orientation(self):
         """
         Get current car position and orientation
@@ -104,7 +95,7 @@ class ArmCummuteNode(Node):
             orientation = self.latest_amcl_pose.pose.pose.orientation
             return position, orientation
         return None, None
-    
+
     def imu_callback(self, msg: Imu):
         """Callback function for processing incoming IMU data."""
         # Example: Log the orientation quaternion
@@ -133,7 +124,7 @@ class ArmCummuteNode(Node):
         goal_position = [
             position.x + offset[0],
             position.y + offset[1],
-            position.z + offset[2]
+            position.z + offset[2],
         ]
 
         # PoseStamped 發佈
@@ -170,7 +161,6 @@ class ArmCummuteNode(Node):
 
         self.marker_pub.publish(marker)
         self.get_logger().info("Published goal marker at 50cm front")
-        
 
     def publish_control(self, vel):
         # Both publishers are available
@@ -276,4 +266,15 @@ class ArmCummuteNode(Node):
         msg.time_from_start.sec = 0
         msg.time_from_start.nanosec = 0
         self.arm_pub.publish(msg)
+
+        msg = JointTrajectoryPoint()
+        rounded_positions = [float(round(p, 2)) for p in joint_positions]
+        msg.positions = rounded_positions
+        msg.velocities = []
+        msg.accelerations = []
+        msg.effort = []
+        msg.time_from_start.sec = 0
+        msg.time_from_start.nanosec = 0
+
+        self.arm_pub2.publish(msg)
         # self.get_logger().info(f"Published angles in radians: {radian_positions}")

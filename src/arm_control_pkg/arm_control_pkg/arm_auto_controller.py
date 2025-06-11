@@ -144,7 +144,10 @@ class ArmAutoController:
 
     def test(self):
         # self.rotate_car()
-        self.arm_commute_node.publish_pos()
+        while 1:
+            print("follow_obj")
+            if self.follow_obj(label="ball") == True:
+                break
         return ArmGoal.Result(success=True, message="success")
 
     def look_up(self):
@@ -272,7 +275,7 @@ class ArmAutoController:
         self.arm_agnle_control.arm_all_change(degree)
         self.arm_commute_node.publish_arm_angle()
 
-    def move_forward_backward(self, direction="forward", distance=0.1):
+    def move_forward_backward(self, direction="forward", distance=0.05):
         """
         控制手臂向前或向後移動。
 
