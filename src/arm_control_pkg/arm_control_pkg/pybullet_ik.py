@@ -47,10 +47,10 @@ class PybulletRobotController:
 
         # synchronize the robot with the initial position
         self.set_initial_joint_positions()
-        # self.draw_link_axes(link_name="camera_1")
         self.mimic_pairs = {}  # {主控_joint_index: 被控_joint_index}
         self.marker_ids = []
         self.transformed_object_marker_ids = []
+        self.draw_link_axes()
 
     def markPointInFrontOfEndEffector(
         self, distance=0.3, z_offset=0.1, color=[0, 1, 1], visualize=True
@@ -161,9 +161,7 @@ class PybulletRobotController:
                     link_idx = jid
                     break
             if link_idx is None:
-                self.get_logger().warn(
-                    f"Link '{link_name}' not found, using end-effector."
-                )
+                print(f"Link '{link_name}' not found, using end-effector.")
                 link_idx = self.end_eff_index
 
         # 取得该 link 的 world pose
@@ -363,6 +361,7 @@ class PybulletRobotController:
         print(
             f"基於末端執行器當前位置 {current_position.tolist()} 和姿態計算相對目標點:"
         )
+
         for direction, pos in target_positions.items():
             print(f"  - {direction} (local): {pos}")
 
@@ -426,7 +425,7 @@ class PybulletRobotController:
         else:
             print(f"無法計算目標位置或方向 '{direction}' 無效。")
             # target_pos_world remains None
-
+        self.draw_link_axes()
         return target_pos_world  # 返回計算出的世界座標或 None
 
     def offset_from_end_effector(
@@ -867,7 +866,6 @@ class PybulletRobotController:
         rotation = R.from_euler("z", 90, degrees=True).as_quat()
 
         # loading robot into the environment
-        # urdf_file = "urdf/" + self.robot_type + ".urdf"
         self.robot_id = p.loadURDF(
             self.urdf_path,
             useFixedBase=True,
@@ -875,28 +873,76 @@ class PybulletRobotController:
             baseOrientation=rotation,
         )
 
-        self.num_joints = p.getNumJoints(self.robot_id)  # Joints
-        # 只保留 Revolute 和 Prismatic 关节
-        self.controllable_joints = []
-        # 假設你有一個要忽略的 joint name list
-        mimic_joint_names = ["Revolute 6"]
+        # get total joint count
+        self.num_joints = p.getNumJoints(self.robot_id)
+        print("#Joints read from pybullet:", self.num_joints)
 
+        # build list of controllable joints (only revolute, excluding mimics)
+        self.controllable_joints = []
+        mimic_joint_names = ["Revolute 6"]
         for jid in range(self.num_joints):
             info = p.getJointInfo(self.robot_id, jid)
             joint_type = info[2]
             joint_name = info[1].decode("utf-8")
-            if joint_type in (p.JOINT_REVOLUTE, p.JOINT_PRISMATIC):
-                if joint_name not in mimic_joint_names:
-                    self.controllable_joints.append(jid)
-                    link_name = info[12].decode("utf-8")
-                    print(f"Joint index {jid} controls link: {link_name}")
+            if joint_type == p.JOINT_REVOLUTE and joint_name not in mimic_joint_names:
+                self.controllable_joints.append(jid)
+                link_name = info[12].decode("utf-8")
+                print(f"Joint index {jid} controls link: {link_name}")
 
-        print("#Joints read from pybullet:", self.num_joints)
         print("#Controllable Joints:", self.controllable_joints)
+
+        # determine end-effector index if not set
         if self.end_eff_index is None:
             self.end_eff_index = self.controllable_joints[-1]
         print("#End-effector:", self.end_eff_index)
 
+        # print detailed properties of each controllable joint
+        type_map = {
+            p.JOINT_REVOLUTE: "REVOLUTE",
+            p.JOINT_PRISMATIC: "PRISMATIC",
+            p.JOINT_SPHERICAL: "SPHERICAL",
+            p.JOINT_PLANAR: "PLANAR",
+            p.JOINT_FIXED: "FIXED",
+            p.JOINT_POINT2POINT: "POINT2POINT",
+            p.JOINT_GEAR: "GEAR",
+        }
+
+        print("—— 可控關節屬性 ——")
+        for jid in self.controllable_joints:
+            info = p.getJointInfo(self.robot_id, jid)
+            name = info[1].decode("utf-8")
+            jtype = info[2]
+            axis = tuple(info[13])
+            lower_lim = info[8]
+            upper_lim = info[9]
+            type_str = type_map.get(jtype, f"UNKNOWN({jtype})")
+            # mark continuous revolute
+            if (
+                type_str == "REVOLUTE"
+                and lower_lim < -math.pi * 1.5
+                and upper_lim > math.pi * 1.5
+            ):
+                type_str += " (continuous)"
+
+            print(
+                f"  · Joint {jid}: name='{name}', "
+                f"type={type_str}, axis={axis}, "
+                f"limits=({lower_lim:.3f}, {upper_lim:.3f})"
+            )
+
+        # error diagnostic: check initial angles vs controllable joints
+        try:
+            initial_angles = self.arm_angle_control_node.get_arm_angles()
+            na = len(initial_angles)
+            nc = len(self.controllable_joints)
+            if na != nc:
+                print("❌ 錯誤：初始關節角度長度與可控關節數量不符！")
+                print(f"    初始角度數量 ({na}): {initial_angles}")
+                print(f"    可控關節數量 ({nc}): {self.controllable_joints}")
+        except Exception as e:
+            print(f"⚠️ 無法取得初始關節角度做診斷：{e}")
+
+        # optionally run simulation loop
         if view_world:
             while True:
                 p.stepSimulation()

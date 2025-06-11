@@ -28,7 +28,7 @@ class ArmAngleControl:
                 )
             self.joint_positions.append(pos)
 
-        print(f"Initialized arm with positions: {self.joint_positions}")
+        print(f"#Initialized arm with positions: {self.joint_positions}")
 
     def arm_default_change(self):
         """Change a joint angle to its default position"""
