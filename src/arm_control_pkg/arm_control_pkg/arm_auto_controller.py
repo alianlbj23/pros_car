@@ -5,6 +5,7 @@ import math
 from typing import Tuple, List
 from arm_control_pkg.utils import get_yaw_from_quaternion, normalize_angle
 
+
 class ArmAutoController:
     def __init__(
         self, arm_params, arm_commute_node, pybulletRobotController, arm_agnle_control
@@ -19,12 +20,14 @@ class ArmAutoController:
         while self.depth > 0.3:
             print(self.depth)
             try:
-                self.depth = self.arm_commute_node.get_latest_object_coordinates(label="ball")[0]
+                self.depth = self.arm_commute_node.get_latest_object_coordinates(
+                    label="ball"
+                )[0]
             except:
                 continue
-        while 1: 
+        while 1:
             print("follow_obj")
-            if self.follow_obj(label="ball")  == True:
+            if self.follow_obj(label="ball") == True:
                 break
             # if self.follow_obj(label="ball") == True:
             #     break
@@ -37,10 +40,10 @@ class ArmAutoController:
         data = self.arm_commute_node.get_latest_object_coordinates(label="ball")
         depth = data[0]
         obj_pos = self.pybullet_robot_controller.markPointInFrontOfEndEffector(
-            distance=depth + 0.05,z_offset=0.1
+            distance=depth + 0.05, z_offset=0.1
         )
         robot_angle = self.pybullet_robot_controller.generateInterpolatedTrajectory(
-            target_position=obj_pos,steps=10
+            target_position=obj_pos, steps=10
         )
         for i in robot_angle:
             self.move_real_and_virtual(radian=i)
@@ -77,7 +80,9 @@ class ArmAutoController:
             yaw = get_yaw_from_quaternion(rotation)
             yaw_error = normalize_angle(target_yaw - yaw)
 
-            print(f"Current Yaw: {math.degrees(yaw):.2f}, Target: {math.degrees(target_yaw):.2f}, Error: {math.degrees(yaw_error):.2f}")
+            print(
+                f"Current Yaw: {math.degrees(yaw):.2f}, Target: {math.degrees(target_yaw):.2f}, Error: {math.degrees(yaw_error):.2f}"
+            )
 
             if abs(yaw_error) < math.radians(5):  # 誤差小於 5 度即停止
                 break
@@ -281,9 +286,9 @@ class ArmAutoController:
         # 根據方向確定距離值（前進為正，後退為負）
         actual_distance = distance if direction == "forward" else -abs(distance)
         if direction == "forward":
-            z_offset = 0.05
+            z_offset = -distance
         else:
-            z_offset = -0.05
+            z_offset = distance
         # 標記目標點位置
         obj_pos = self.pybullet_robot_controller.markPointInFrontOfEndEffector(
             distance=actual_distance, z_offset=z_offset
