@@ -55,84 +55,24 @@ class PybulletRobotController:
     def markPointInFrontOfEndEffector(
         self, distance=0.3, z_offset=0.1, color=[0, 1, 1], visualize=True
     ):
-        """
-        計算並可選地標記末端執行器前方指定距離的點。
+        ee_state = p.getLinkState(self.robot_id, self.end_eff_index)
+        x, y, z = ee_state[0]  # 当前 pos
+        target = [x, y + 0.03, z + z_offset]  # X,Y 用原值，Z 加偏移
+        print(f"Only Z changed: {target}")
 
-        Args:
-            distance (float): 沿末端執行器前方 (local X 軸) 的距離。
-            color (list): 視覺化標記的顏色。
-            visualize (bool): 是否繪製標記。
-
-        Returns:
-            np.ndarray: 計算出的目標點在世界座標系下的 [x, y, z] 座標。
-        """
-        # 初始化 ID 容器 (如果需要視覺化)
-        if visualize and not hasattr(self, "front_marker_ids"):
-            self.front_marker_ids = []
-
-        # 刪掉上一個標記 (如果需要視覺化且列表存在)
-        if visualize and hasattr(self, "front_marker_ids"):
-            for mid in self.front_marker_ids:
-                try:  # Add try-except for robustness
-                    p.removeUserDebugItem(mid)
-                except:
-                    pass
-            self.front_marker_ids.clear()
-
-        # 取得 EE 姿態與方向
-        try:
-            ee_state = p.getLinkState(
-                self.robot_id, self.end_eff_index, computeForwardKinematics=True
-            )
-            position = np.array(ee_state[0])  # Use worldLinkFramePosition
-            orientation = ee_state[1]  # Use worldLinkFrameOrientation
-            rot_matrix = np.array(p.getMatrixFromQuaternion(orientation)).reshape(3, 3)
-            # Assuming the local X-axis is the forward direction for the end-effector
-            forward_direction = rot_matrix[:, 0]
-            target_point = position + forward_direction * distance
-            target_point[2] += z_offset  # Add Z offset to the target point
-        except Exception as e:
-            print(f"Error getting end-effector state or calculating target point: {e}")
-            # Return current EE position or None if state couldn't be retrieved
-            try:
-                ee_state = p.getLinkState(self.robot_id, self.end_eff_index)
-                return np.array(ee_state[0])  # Return current position as fallback
-            except:
-                return None  # Return None if even that fails
-
-        # 視覺化 (可選)
         if visualize:
-            line_length = 0.05
-            # X line
-            self.front_marker_ids.append(
-                p.addUserDebugLine(
-                    (target_point - np.array([line_length, 0, 0])).tolist(),
-                    (target_point + np.array([line_length, 0, 0])).tolist(),
-                    color,
-                    lineWidth=2,
-                )
+            # 在世界坐标上下画十字
+            p.addUserDebugLine(
+                [x, y + 0.03, z + z_offset], [x, y + 0.03, z + z_offset], color, 2
             )
-            # Y line
-            self.front_marker_ids.append(
-                p.addUserDebugLine(
-                    (target_point - np.array([0, line_length, 0])).tolist(),
-                    (target_point + np.array([0, line_length, 0])).tolist(),
-                    color,
-                    lineWidth=2,
-                )
+            p.addUserDebugLine(
+                [x, y + 0.03, z + z_offset], [x, y + 0.03, z + z_offset], color, 2
             )
-            # Z line
-            self.front_marker_ids.append(
-                p.addUserDebugLine(
-                    (target_point - np.array([0, 0, line_length])).tolist(),
-                    (target_point + np.array([0, 0, line_length])).tolist(),
-                    color,
-                    lineWidth=2,
-                )
+            p.addUserDebugLine(
+                [x, y + 0.03, z + z_offset], [x, y + 0.03, z + z_offset], color, 2
             )
 
-        # 返回計算出的座標
-        return list(target_point)
+        return target
 
     def draw_link_axes(self, link_name=None, axis_length=0.2):
         """
@@ -316,52 +256,54 @@ class PybulletRobotController:
 
     def calculate_ee_relative_target_positions(self, distance):
         try:
-            # 1. 獲取當前末端執行器的世界座標和姿態
             ee_state = p.getLinkState(
                 self.robot_id, self.end_eff_index, computeForwardKinematics=True
             )
-            current_position = np.array(ee_state[0])  # worldLinkFramePosition
-            current_orientation = ee_state[
-                1
-            ]  # worldLinkFrameOrientation (quaternion x,y,z,w)
+            current_position = np.array(ee_state[0])
+            current_orientation = ee_state[1]
         except Exception as e:
             print(f"獲取末端執行器狀態時發生錯誤: {e}")
             return None
 
-        # 2. 將姿態四元數轉換為旋轉矩陣
         try:
-            rotation_matrix = np.array(
-                p.getMatrixFromQuaternion(current_orientation)
-            ).reshape(3, 3)
+            R_mat = np.array(p.getMatrixFromQuaternion(current_orientation)).reshape(
+                3, 3
+            )
         except Exception as e:
             print(f"從四元數轉換旋轉矩陣時發生錯誤: {e}")
             return None
 
-        local_x_axis = rotation_matrix[:, 0]  # Assuming X is forward
-        local_y_axis = rotation_matrix[:, 1]  # Assuming Y is left
-        local_z_axis = rotation_matrix[:, 2]  # Assuming Z is up
+        lx = R_mat[:, 0]  # local x (forward)
+        ly = R_mat[:, 1]  # local y (left)
+        lz = R_mat[:, 2]  # local z (up)
 
-        # 4. 計算相對於末端執行器局部的目標世界座標
-        target_positions = {
-            "up": (current_position + local_z_axis * distance).tolist(),
-            "down": (current_position - local_z_axis * distance * 1.5).tolist(),
-            "left": (current_position + local_x_axis * distance).tolist(),
-            "right": (current_position - local_x_axis * distance).tolist(),
-            "backward": (
-                current_position - local_x_axis * distance
-            ).tolist(),  # Add backward movement
-            # 如果需要向前移動，可以添加:
-            # 'forward': (current_position + local_x_axis * distance).tolist(),
-        }
+        targets = {}
+
+        # up / down 不变
+        targets["up"] = (current_position + lz * distance).tolist()
+        targets["down"] = (current_position - lz * distance * 1.5).tolist()
+
+        # left：沿 local_x 偏移 + 在 y 方向再加 0.03
+        tp_left = current_position + lx * distance
+        tp_left[1] += 0.03
+        targets["left"] = tp_left.tolist()
+
+        # right：沿 local_x 负方向 + 在 y 方向再加 0.03
+        tp_right = current_position - lx * distance
+        tp_right[1] += 0.03
+        targets["right"] = tp_right.tolist()
+
+        # backward（如果需要）
+        targets["backward"] = (current_position - lx * distance).tolist()
 
         print(
             f"基於末端執行器當前位置 {current_position.tolist()} 和姿態計算相對目標點:"
         )
+        for d, pnt in targets.items():
+            print(f"  - {d} (local): {pnt}")
 
-        for direction, pos in target_positions.items():
-            print(f"  - {direction} (local): {pos}")
         self.draw_link_axes()
-        return target_positions
+        return targets
 
     def move_ee_relative_example(
         self, direction, distance, visualize=True, execute_move=False
