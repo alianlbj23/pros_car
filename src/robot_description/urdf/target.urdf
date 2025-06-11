@@ -481,7 +481,7 @@
       </geometry>
     </collision>
   </link>
-  
+
   <link name="virtual_tip_link">
     <inertial>
       <mass value="0.00001"/>
@@ -575,8 +575,8 @@
     <joint name="virtual_tip_joint" type="revolute">
     <parent link="craw_1"/> <!-- 改成共用父連結 -->
     <child link="virtual_tip_link"/>
-    <origin xyz=" 0.036 -0.054 -0.00325" rpy="0 0 0"/> <!-- 位置依你要掛在中間點的 offset 調整 -->
-    <axis xyz="0 0 1"/>
+    <origin xyz=" 0.036 -0.054 -0.00325" rpy="3.14 3.14 1.57"/> <!-- 位置依你要掛在中間點的 offset 調整 -->
+    <axis xyz="1 0 0"/>
     <limit lower="0" upper="0" effort="0" velocity="0"/>
   </joint>
 </robot>

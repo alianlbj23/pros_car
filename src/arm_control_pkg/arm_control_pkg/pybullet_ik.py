@@ -50,7 +50,7 @@ class PybulletRobotController:
         self.mimic_pairs = {}  # {主控_joint_index: 被控_joint_index}
         self.marker_ids = []
         self.transformed_object_marker_ids = []
-        self.draw_link_axes()
+        # self.draw_link_axes()
 
     def markPointInFrontOfEndEffector(
         self, distance=0.3, z_offset=0.1, color=[0, 1, 1], visualize=True
@@ -153,16 +153,31 @@ class PybulletRobotController:
         # 找到要绘制的 link index
         if link_name is None:
             link_idx = self.end_eff_index
+            resolved_name = None
         else:
             link_idx = None
+            resolved_name = None
             for jid in range(self.num_joints):
                 info = p.getJointInfo(self.robot_id, jid)
-                if info[12].decode("utf-8") == link_name:
+                name = info[12].decode("utf-8")
+                if name == link_name:
                     link_idx = jid
+                    resolved_name = name
                     break
             if link_idx is None:
-                print(f"Link '{link_name}' not found, using end-effector.")
+                print(f"Warning: Link '{link_name}' not found, using end-effector.")
                 link_idx = self.end_eff_index
+                resolved_name = None
+
+        # 如果用户没指定或没找到，就用 end_eff_index 对应的 link 名称
+        if resolved_name is None:
+            info = p.getJointInfo(self.robot_id, self.end_eff_index)
+            resolved_name = (
+                info[12].decode("utf-8") if info else f"index {self.end_eff_index}"
+            )
+
+        # 打印当前使用的 link 名称和索引
+        print(f"Drawing axes for link: '{resolved_name}' (index {link_idx})")
 
         # 取得该 link 的 world pose
         ls = p.getLinkState(self.robot_id, link_idx)
@@ -189,7 +204,6 @@ class PybulletRobotController:
         )
 
         # --- 新增：在 pos 处画一个小“球”点 ---
-        # addUserDebugPoints(points, colors, pointSize)
         self.link_axes_lines.append(
             p.addUserDebugPoints(
                 [pos.tolist()],  # 位置列表
@@ -301,20 +315,6 @@ class PybulletRobotController:
         return None  # Return None if not found
 
     def calculate_ee_relative_target_positions(self, distance):
-        """
-        計算相對於當前末端執行器 **局部座標系** 的上、下、左、右、後退目標世界座標。
-
-        Args:
-            distance (float): 要在末端執行器局部座標系的各個方向上移動的距離（單位：公尺）。
-                              - 上/下: 沿局部 Z 軸
-                              - 左/右: 沿局部 Y 軸 (假設 Y 軸指向左側)
-                              - 後退: 沿局部 X 軸的反方向 (假設 X 軸指向前方)
-
-        Returns:
-            dict: 一個包含五個目標世界座標的字典，鍵為 'up', 'down', 'left', 'right', 'backward'。
-                  每個值是一個包含 [x, y, z] 座標的列表。
-                  如果無法獲取末端執行器狀態，則返回 None。
-        """
         try:
             # 1. 獲取當前末端執行器的世界座標和姿態
             ee_state = p.getLinkState(
@@ -337,10 +337,6 @@ class PybulletRobotController:
             print(f"從四元數轉換旋轉矩陣時發生錯誤: {e}")
             return None
 
-        # 3. 提取末端執行器的局部座標軸在世界座標系中的方向向量
-        #   - X 軸通常是向前 (索引 0)
-        #   - Y 軸通常是向左 (索引 1)
-        #   - Z 軸通常是向上 (索引 2)
         local_x_axis = rotation_matrix[:, 0]  # Assuming X is forward
         local_y_axis = rotation_matrix[:, 1]  # Assuming Y is left
         local_z_axis = rotation_matrix[:, 2]  # Assuming Z is up
@@ -348,9 +344,9 @@ class PybulletRobotController:
         # 4. 計算相對於末端執行器局部的目標世界座標
         target_positions = {
             "up": (current_position + local_z_axis * distance).tolist(),
-            "down": (current_position - local_z_axis * distance).tolist(),
-            "left": (current_position + local_y_axis * distance).tolist(),
-            "right": (current_position - local_y_axis * distance).tolist(),
+            "down": (current_position - local_z_axis * distance * 1.5).tolist(),
+            "left": (current_position + local_x_axis * distance).tolist(),
+            "right": (current_position - local_x_axis * distance).tolist(),
             "backward": (
                 current_position - local_x_axis * distance
             ).tolist(),  # Add backward movement
@@ -364,7 +360,7 @@ class PybulletRobotController:
 
         for direction, pos in target_positions.items():
             print(f"  - {direction} (local): {pos}")
-
+        self.draw_link_axes()
         return target_positions
 
     def move_ee_relative_example(
@@ -425,7 +421,7 @@ class PybulletRobotController:
         else:
             print(f"無法計算目標位置或方向 '{direction}' 無效。")
             # target_pos_world remains None
-        self.draw_link_axes()
+        # self.draw_link_axes()
         return target_pos_world  # 返回計算出的世界座標或 None
 
     def offset_from_end_effector(

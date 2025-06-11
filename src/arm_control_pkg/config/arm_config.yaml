@@ -10,7 +10,7 @@ pybullet:
   view_world: false # true or false
   initial_height : 0.195
   controllable_joints : 5.0
-  end_eff_index: 9.0
+  end_eff_index: 10.0
   time_step: 1e-3
 joints:
   0:
