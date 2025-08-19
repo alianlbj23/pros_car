@@ -31,10 +31,13 @@ class ArmActionServer(Node):
     def execute_callback(self, goal_handle):
         result = ArmGoal.Result()
         mode = goal_handle.request.mode
+
+        # 建立可被下游查問的取消函式
+        should_cancel = lambda: goal_handle.is_cancel_requested
         self.get_logger().info(f"Executing arm action in mode: {mode}")
 
         # 選擇對應的自動化方法
-        arm_auto_method = self._select_arm_auto_method(mode)
+        arm_auto_method = self._select_arm_auto_method(mode, should_cancel)
         if arm_auto_method is None:
             self.get_logger().error(f"Unknown mode: {mode}")
             result.success = False
@@ -73,7 +76,7 @@ class ArmActionServer(Node):
 
         return result
 
-    def _select_arm_auto_method(self, mode: str):
+    def _select_arm_auto_method(self, mode: str, should_cancel):
         """
         根據模式選擇對應的 arm_auto_controller 方法或創建一個可調用對象。
         """
@@ -81,9 +84,9 @@ class ArmActionServer(Node):
         if mode == "wave":
             return self.arm_auto_controller.arm_wave
         elif mode == "catch":
-            return self.arm_auto_controller.catch
+            return functools.partial(self.arm_auto_controller.catch, should_cancel=should_cancel)
         elif mode == "object_follow":
-            return self.arm_auto_controller.object_follow
+            return functools.partial(self.arm_auto_controller.object_follow, should_cancel=should_cancel)
         elif mode == "test":
             return self.arm_auto_controller.test
         elif mode == "look_up":

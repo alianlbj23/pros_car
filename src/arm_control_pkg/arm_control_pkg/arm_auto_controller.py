@@ -16,7 +16,7 @@ class ArmAutoController:
         self.depth = 100.0
 
 
-    def catch(self):
+    def catch(self, should_cancel=lambda: False):
         label = "ball"
         while self.depth > 0.4:
             print(self.depth)
@@ -25,7 +25,8 @@ class ArmAutoController:
             except:
                 continue
         while 1:
-            print("follow_obj")
+            if should_cancel():
+                return ArmGoal.Result(success=False, message="Canceled by user")
             if self.follow_obj(label=label)  == True:
                 break
             # if self.follow_obj(label="ball") == True:
@@ -97,9 +98,11 @@ class ArmAutoController:
     def arm_wave(self):
         pass
 
-    def object_follow(self):
+    def object_follow(self, should_cancel=lambda: False):
         while 1:
-            self.follow_obj(label="ball", step=2)
+            if should_cancel():
+                return ArmGoal.Result(success=False, message="Canceled by user")
+            self.follow_obj(label="ball", step=5)
 
     def radians_to_degrees(self, radians_list):
         """Converts a list of angles from radians to degrees."""
