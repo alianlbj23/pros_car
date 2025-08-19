@@ -33,7 +33,7 @@ class MenuApp:
                 "catch": None,
                 "wave": None,
                 "init_pose": None,
-                "arm_ik_move": None,
+                "object_follow": None,
                 "test": None,
                 "up": None,
                 "down": None,

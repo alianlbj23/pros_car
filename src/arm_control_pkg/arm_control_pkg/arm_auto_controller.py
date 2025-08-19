@@ -15,6 +15,7 @@ class ArmAutoController:
         self.arm_agnle_control = arm_agnle_control
         self.depth = 100.0
 
+
     def catch(self):
         label = "ball"
         while self.depth > 0.4:
@@ -23,7 +24,7 @@ class ArmAutoController:
                 self.depth = self.arm_commute_node.get_latest_object_coordinates(label=label)[0]
             except:
                 continue
-        while 1: 
+        while 1:
             print("follow_obj")
             if self.follow_obj(label=label)  == True:
                 break
@@ -96,16 +97,9 @@ class ArmAutoController:
     def arm_wave(self):
         pass
 
-    def arm_ik_move(self):
-        # t = self.pybullet_robot_controller.move_end_effector_laterally()
-        # print(t[0:5])
-        # self.pybullet_robot_controller.setJointPosition(position=t[0:5])
-        t = self.pybullet_robot_controller.offset_from_end_effector(
-            y_offset=0.1, z_offset=0.1
-        )
-        self.pybullet_robot_controller.setJointPosition(position=t[0:5])
-        self.pybullet_robot_controller.draw_link_axes(link_name="camera_1")
-        return ArmGoal.Result(success=True, message="success")
+    def object_follow(self):
+        while 1:
+            self.follow_obj(label="ball", step=2)
 
     def radians_to_degrees(self, radians_list):
         """Converts a list of angles from radians to degrees."""
@@ -165,7 +159,7 @@ class ArmAutoController:
             and abs(z) <= 0.1
         )
 
-    def follow_obj(self, label="ball", target_depth=0.3):
+    def follow_obj(self, label="ball", target_depth=0.3, step=10):
         # 參數設定
         depth_threshold = 0.05
         lateral_threshold = 0.05
@@ -209,7 +203,7 @@ class ArmAutoController:
 
         # 5. 生成與執行軌跡
         traj = self.pybullet_robot_controller.generateInterpolatedTrajectory(
-            target_position=target_pos, steps=10
+            target_position=target_pos, steps=step
         )
         if not traj:
             return True
