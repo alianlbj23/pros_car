@@ -24,6 +24,7 @@ setup(
     entry_points={
         "console_scripts": [
             "arm_control_node = arm_control_pkg.main:main",
+            "unity_arm_republish_node = arm_control_pkg.unity_arm_republish:main",
         ],
     },
 )
