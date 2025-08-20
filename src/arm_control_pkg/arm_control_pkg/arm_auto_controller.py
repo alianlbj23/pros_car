@@ -17,7 +17,7 @@ class ArmAutoController:
 
 
     def catch(self, should_cancel=lambda: False):
-        label = "ball"
+        label = "yellow ball"
         while self.depth > 0.4:
             print(self.depth)
             try:
@@ -43,11 +43,11 @@ class ArmAutoController:
             distance=depth + 0.05,z_offset=0.15
         )
         robot_angle = self.pybullet_robot_controller.generateInterpolatedTrajectory(
-            target_position=obj_pos,steps=10
+            target_position=obj_pos,steps=20
         )
         for i in robot_angle:
             self.move_real_and_virtual(radian=i)
-            time.sleep(0.1)
+            time.sleep(0.3)
         self.grap()
         time.sleep(1.0)
         self.init_pose(grap=True)
@@ -185,13 +185,13 @@ class ArmAutoController:
             return []  # Or raise an error
 
     def grap(self):
-        self.arm_agnle_control.arm_index_change(4, 20.0)
+        self.arm_agnle_control.arm_index_change(4, 10.0)
         self.arm_commute_node.publish_arm_angle()
 
     def init_pose(self, grap=False):
         angle = self.arm_agnle_control.arm_default_change()
         if grap:
-            self.arm_agnle_control.arm_index_change(4, 20.0)
+            self.arm_agnle_control.arm_index_change(4, 10.0)
             self.arm_commute_node.publish_arm_angle()
             time.sleep(1.0)
         self.arm_commute_node.publish_arm_angle()
