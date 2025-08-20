@@ -53,86 +53,80 @@ class PybulletRobotController:
         self.transformed_object_marker_ids = []
 
     def markPointInFrontOfEndEffector(
-        self, distance=0.3, z_offset=0.1, color=[0, 1, 1], visualize=True
+        self, distance=0.3, z_offset=0.1, y_offset=0.0, color=[0, 1, 1], visualize=True
     ):
         """
-        計算並可選地標記末端執行器前方指定距離的點。
-
-        Args:
-            distance (float): 沿末端執行器前方 (local X 軸) 的距離。
-            color (list): 視覺化標記的顏色。
-            visualize (bool): 是否繪製標記。
+        根據 end-effector 當前四元數，將 (distance, y_offset, z_offset)
+        視為在「本地座標系 (X, Y, Z)」下的偏移，轉成世界座標後加到當前 EE 位置。
+        - distance: 沿本地 X（前方）
+        - y_offset: 沿本地 Y（側向，+為左）
+        - z_offset: 沿本地 Z（垂直，+為上）
 
         Returns:
-            np.ndarray: 計算出的目標點在世界座標系下的 [x, y, z] 座標。
+            list[x, y, z]: 目標點世界座標
         """
-        # 初始化 ID 容器 (如果需要視覺化)
+        # 初始化/清理視覺化 ID
         if visualize and not hasattr(self, "front_marker_ids"):
             self.front_marker_ids = []
-
-        # 刪掉上一個標記 (如果需要視覺化且列表存在)
-        if visualize and hasattr(self, "front_marker_ids"):
+        if visualize:
             for mid in self.front_marker_ids:
-                try:  # Add try-except for robustness
+                try:
                     p.removeUserDebugItem(mid)
                 except:
                     pass
             self.front_marker_ids.clear()
 
-        # 取得 EE 姿態與方向
         try:
             ee_state = p.getLinkState(
                 self.robot_id, self.end_eff_index, computeForwardKinematics=True
             )
-            position = np.array(ee_state[0])  # Use worldLinkFramePosition
-            orientation = ee_state[1]  # Use worldLinkFrameOrientation
-            rot_matrix = np.array(p.getMatrixFromQuaternion(orientation)).reshape(3, 3)
-            # Assuming the local X-axis is the forward direction for the end-effector
-            forward_direction = rot_matrix[:, 0]
-            target_point = position + forward_direction * distance
-            target_point[2] += z_offset  # Add Z offset to the target point
+            position = np.array(ee_state[0])    # 世界座標
+            orientation = ee_state[1]           # 四元數 (x,y,z,w)
+
+            # 四元數 → 旋轉矩陣（世界座標中的本地基底）
+            Rm = np.array(p.getMatrixFromQuaternion(orientation)).reshape(3, 3)
+            local_x = Rm[:, 0]   # 本地 X（前）
+            local_y = Rm[:, 1]   # 本地 Y（左）
+            local_z = Rm[:, 2]   # 本地 Z（上）
+
+            # 把本地偏移映射到世界
+            offset_vec = distance * local_x + y_offset * local_y + z_offset * local_z
+            target_point = position + offset_vec
+
         except Exception as e:
-            print(f"Error getting end-effector state or calculating target point: {e}")
-            # Return current EE position or None if state couldn't be retrieved
+            print(f"Error computing EE forward point: {e}")
             try:
                 ee_state = p.getLinkState(self.robot_id, self.end_eff_index)
-                return np.array(ee_state[0])  # Return current position as fallback
+                return list(ee_state[0])
             except:
-                return None  # Return None if even that fails
+                return None
 
-        # 視覺化 (可選)
         if visualize:
-            line_length = 0.05
-            # X line
+            line_len = 0.05
+            # 畫三條短線（十字 + z）
             self.front_marker_ids.append(
                 p.addUserDebugLine(
-                    (target_point - np.array([line_length, 0, 0])).tolist(),
-                    (target_point + np.array([line_length, 0, 0])).tolist(),
-                    color,
-                    lineWidth=2,
+                    (target_point - np.array([line_len, 0, 0])).tolist(),
+                    (target_point + np.array([line_len, 0, 0])).tolist(),
+                    color, lineWidth=2
                 )
             )
-            # Y line
             self.front_marker_ids.append(
                 p.addUserDebugLine(
-                    (target_point - np.array([0, line_length, 0])).tolist(),
-                    (target_point + np.array([0, line_length, 0])).tolist(),
-                    color,
-                    lineWidth=2,
+                    (target_point - np.array([0, line_len, 0])).tolist(),
+                    (target_point + np.array([0, line_len, 0])).tolist(),
+                    color, lineWidth=2
                 )
             )
-            # Z line
             self.front_marker_ids.append(
                 p.addUserDebugLine(
-                    (target_point - np.array([0, 0, line_length])).tolist(),
-                    (target_point + np.array([0, 0, line_length])).tolist(),
-                    color,
-                    lineWidth=2,
+                    (target_point - np.array([0, 0, line_len])).tolist(),
+                    (target_point + np.array([0, 0, line_len])).tolist(),
+                    color, lineWidth=2
                 )
             )
-
-        # 返回計算出的座標
         return list(target_point)
+
 
     def draw_link_axes(self, link_name=None, axis_length=0.2):
         """

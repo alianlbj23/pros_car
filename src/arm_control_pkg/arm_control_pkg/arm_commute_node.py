@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32MultiArray, String
+from std_msgs.msg import Float32MultiArray, String, Float32
 from trajectory_msgs.msg import JointTrajectoryPoint
 from sensor_msgs.msg import Imu  # Import the Imu message type
 import math
@@ -40,6 +40,8 @@ class ArmCummuteNode(Node):
             10
         )
 
+        self.arucode_pub = self.create_publisher(Float32, '/aruco/id100/depth_m', 10)
+
         self.goal_pose_pub = self.create_publisher(
             PoseStamped,
             'goal_pose_tmp',
@@ -67,6 +69,16 @@ class ArmCummuteNode(Node):
         )
         # --------------------------
 
+        # --- Add arucode Subscriber ---
+        self.latest_arucode_depth = None
+        self.arucode_sub = self.create_subscription(
+            Float32,               # 訊息型別
+            '/aruco/id100/depth_m', # topic 名稱
+            self.arucode_sub_callback,   # callback 函式
+            10                     # QoS
+        )
+        # --------------------------
+
         # --- Add yolo object offset Subscriber ---
         self.object_coordinates = {}
         self.yolo_object_offset_sub = self.create_subscription(
@@ -86,12 +98,16 @@ class ArmCummuteNode(Node):
         self.amcl_sub = self.create_subscription(
             PoseWithCovarianceStamped, "/amcl_pose", self._amcl_callback, 10
         )
-        
-    
+
+    def clear_arucode_topic(self):
+        msg = Float32()
+        msg.data = float('nan')
+        self.arucode_pub.publish(msg)
+
     def _amcl_callback(self, msg):
         """Store latest AMCL pose"""
         self.latest_amcl_pose = msg
-    
+
     def get_car_position_and_orientation(self):
         """
         Get current car position and orientation
@@ -104,7 +120,7 @@ class ArmCummuteNode(Node):
             orientation = self.latest_amcl_pose.pose.pose.orientation
             return position, orientation
         return None, None
-    
+
     def imu_callback(self, msg: Imu):
         """Callback function for processing incoming IMU data."""
         # Example: Log the orientation quaternion
@@ -170,7 +186,7 @@ class ArmCummuteNode(Node):
 
         self.marker_pub.publish(marker)
         self.get_logger().info("Published goal marker at 50cm front")
-        
+
 
     def publish_control(self, vel):
         # Both publishers are available
@@ -180,6 +196,15 @@ class ArmCummuteNode(Node):
         rear_msg.data = vel[2:4]
         self.rear_wheel_pub.publish(rear_msg)
         self.front_wheel_pub.publish(front_msg)
+
+    def arucode_sub_callback(self, msg: Float32):
+        self.latest_arucode_depth = msg.data
+
+    def get_latest_arucode_depth(self):
+        return self.latest_arucode_depth
+
+    def clear_arucode_signal(self):
+        self.latest_arucode_depth = None
 
     def yolo_object_offset_callback(self, msg: String):
         """Callback function for processing incoming YOLO object offset data."""
