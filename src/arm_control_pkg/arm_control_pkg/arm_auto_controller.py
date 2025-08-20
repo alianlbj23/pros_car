@@ -4,7 +4,7 @@ import time
 import math
 from typing import Tuple, List
 from arm_control_pkg.utils import get_yaw_from_quaternion, normalize_angle
-
+import random
 class ArmAutoController:
     def __init__(
         self, arm_params, arm_commute_node, pybulletRobotController, arm_agnle_control
@@ -40,7 +40,7 @@ class ArmAutoController:
         data = self.arm_commute_node.get_latest_object_coordinates(label=label)
         depth = data[0]
         obj_pos = self.pybullet_robot_controller.markPointInFrontOfEndEffector(
-            distance=depth + 0.15,z_offset=0.15
+            distance=depth + 0.05,z_offset=0.15
         )
         robot_angle = self.pybullet_robot_controller.generateInterpolatedTrajectory(
             target_position=obj_pos,steps=10
@@ -52,13 +52,67 @@ class ArmAutoController:
         time.sleep(1.0)
         self.init_pose(grap=True)
         time.sleep(1.0)
-        self.rotate_car()
-        self.rotate_wrist()
-        time.sleep(0.2)
-        for i in range(10):
-            self.arm_commute_node.publish_pos()
-            time.sleep(0.1)
+        self.seek_arucode()
+        time.sleep(0.5)
+        self.init_pose()
+        # self.rotate_car()
+        # self.rotate_wrist()
+        # time.sleep(0.2)
+        # for i in range(10):
+        #     self.arm_commute_node.publish_pos()
+        #     time.sleep(0.1)
+
         return ArmGoal.Result(success=True, message="success")
+
+    def seek_arucode(self, joint_idx: int = 0, sleep_s: float = 0.2):
+        """
+        掃描指定關節 (joint_idx) 從 0~180 度，邊掃邊讀取 ArUco 深度；
+        一旦讀到深度，就把末端移到前方該距離的位置。
+        """
+        self.arm_commute_node.clear_arucode_topic()
+        # 防呆：確保 joint_idx 在範圍內
+        joint_positions, _, _ = self.pybullet_robot_controller.getJointStates()  # 弧度 list，長度 = 可控關節數
+        dof = len(joint_positions)
+        if dof == 0 or joint_idx < 0 or joint_idx >= dof:
+            self.get_logger().error(f"[seek_arucode] 無效的 joint_idx={joint_idx} 或無可控關節（dof={dof}）")
+            return
+
+        for deg in range(0, 181, 10):  # 0..180（含 180）
+            # 1) UI/角度控制端用「度」
+            self.arm_agnle_control.arm_index_change(joint_idx, deg)
+
+            # 2) 取目前整組關節（弧度），只改第 joint_idx
+            q = list(self.pybullet_robot_controller.getJointStates()[0])  # 再取一次最新值
+            q[joint_idx] = math.radians(deg)
+
+            # 3) 真實 + 模擬 同步（注意：這裡要丟「整組」角度）
+            self.move_real_and_virtual(radian=q)
+
+            time.sleep(0.5)
+
+            # 4) 檢查是否拿到深度
+            arucode_depth = self.arm_commute_node.get_latest_arucode_depth()  # 單位：公尺（前面 publish 的就是 m）
+            print("arucode:", arucode_depth)
+            if arucode_depth is not None and arucode_depth > 0.0:
+                time.sleep(1)
+                arucode_depth = self.arm_commute_node.get_latest_arucode_depth()
+                # 5) 依目前末端姿態，沿本地 X 前方 arucode_depth 的目標點（你函式已用四元數算本地軸了）
+                obj_pos = self.pybullet_robot_controller.markPointInFrontOfEndEffector(
+                    distance=arucode_depth - 0.15, z_offset=0.05, visualize=True
+                )
+
+                # 6) 插值產生軌跡並執行
+                traj = self.pybullet_robot_controller.generateInterpolatedTrajectory(
+                    target_position=obj_pos, steps=5
+                )
+                for qstep in traj:   # qstep 應該就是「整組關節弧度」
+                    self.move_real_and_virtual(radian=qstep)
+                    time.sleep(0.3)
+                self.arm_agnle_control.arm_index_change(4, 70)
+                self.arm_commute_node.publish_arm_angle()
+                self.arm_commute_node.clear_arucode_signal()  # 清除信號，避免重複讀取
+                break
+
 
     def rotate_wrist(self):
         self.arm_agnle_control.arm_index_change(3, 90)
@@ -95,8 +149,19 @@ class ArmAutoController:
         # 給 car2 的座標
         pass
 
-    def arm_wave(self):
-        pass
+    def arm_wave(self, should_cancel=lambda: False):
+        while 1:
+            if should_cancel():
+                return ArmGoal.Result(success=False, message="Canceled by user")
+            axis0 = round(random.uniform(30.0, 150.0), 1)
+            axis1 = round(random.uniform(0.0, 70.0), 1)
+            axis2 = round(random.uniform(0.0, 130.0), 1)
+            axis3 = round(random.uniform(90.0, 180.0), 1)
+            axis4 = round(random.uniform(0.0, 70.0), 1)
+            angles_deg = [axis0, axis1, axis2, axis3, axis4]
+            angles_rad = [math.radians(a) for a in angles_deg]
+            self.move_real_and_virtual(radian=angles_rad)
+            time.sleep(1.0)
 
     def object_follow(self, should_cancel=lambda: False):
         while 1:
@@ -120,13 +185,13 @@ class ArmAutoController:
             return []  # Or raise an error
 
     def grap(self):
-        self.arm_agnle_control.arm_index_change(4, 0)
+        self.arm_agnle_control.arm_index_change(4, 20.0)
         self.arm_commute_node.publish_arm_angle()
 
     def init_pose(self, grap=False):
         angle = self.arm_agnle_control.arm_default_change()
         if grap:
-            self.arm_agnle_control.arm_index_change(4, 30)
+            self.arm_agnle_control.arm_index_change(4, 20.0)
             self.arm_commute_node.publish_arm_angle()
             time.sleep(1.0)
         self.arm_commute_node.publish_arm_angle()
@@ -261,7 +326,7 @@ class ArmAutoController:
         # for synchronous move real and virtual robot
         self.pybullet_robot_controller.setJointPosition(position=radian)
         degree = self.radians_to_degrees(radian)
-        degree[-1] = 90
+        # degree[-1] = 90
         self.arm_agnle_control.arm_all_change(degree)
         self.arm_commute_node.publish_arm_angle()
 
