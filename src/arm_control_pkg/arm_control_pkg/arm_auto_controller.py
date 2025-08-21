@@ -42,9 +42,9 @@ class ArmAutoController:
         self.arm_commute_node.publish_arm_angle()
         time.sleep(0.5)
 
-        self.arm_agnle_control.arm_index_change(0, 1.0)
+        self.arm_agnle_control.arm_index_change(0, 5.0)
         self.arm_commute_node.publish_arm_angle()
-        time.sleep(0.5)
+        time.sleep(1.0)
 
         angles = [5, 80, 100, 180, 10]
         self.arm_agnle_control.arm_all_change(angles)
