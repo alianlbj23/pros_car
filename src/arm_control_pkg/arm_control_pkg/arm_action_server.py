@@ -85,6 +85,8 @@ class ArmActionServer(Node):
             return functools.partial(self.arm_auto_controller.arm_wave, should_cancel=should_cancel)
         elif mode == "catch":
             return functools.partial(self.arm_auto_controller.catch, should_cancel=should_cancel)
+        elif mode == "catch2":
+            return functools.partial(self.arm_auto_controller.catch2, should_cancel=should_cancel)
         elif mode == "object_follow":
             return functools.partial(self.arm_auto_controller.object_follow, should_cancel=should_cancel)
         elif mode == "test":

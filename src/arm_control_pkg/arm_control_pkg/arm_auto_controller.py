@@ -15,9 +15,69 @@ class ArmAutoController:
         self.arm_agnle_control = arm_agnle_control
         self.depth = 100.0
 
+    def catch2(self, should_cancel=lambda: False):
+        self.arm_agnle_control.arm_index_change(0, 100.0)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(0.5)
+        self.arm_agnle_control.arm_index_change(0, 105.0)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(0.5)
+
+        angles = [105, 45, 145, 180, 70]
+        
+        for i in range(8):
+            self.arm_agnle_control.arm_all_change(angles)
+            self.arm_commute_node.publish_arm_angle()
+            time.sleep(0.5)
+
+            angles[1] += 5
+            angles[2] -= 5
+        time.sleep(1.0)
+        self.grap()
+        time.sleep(0.5)
+        self.init_pose(grap=True)
+        time.sleep(1.0)
+
+        self.arm_agnle_control.arm_index_change(0, 0.0)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(0.5)
+
+        self.arm_agnle_control.arm_index_change(0, 1.0)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(0.5)
+
+        angles = [5, 80, 100, 180, 10]
+        self.arm_agnle_control.arm_all_change(angles)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(0.5)
+
+        self.arm_agnle_control.arm_index_change(4, 70.0)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(0.5)
+
+        self.init_pose(grap=False)
+
+        # self.arm_agnle_control.arm_all_change([105, 45, 145, 180, 70])
+        # self.arm_commute_node.publish_arm_angle()
+        # time.sleep(0.5)
+        # self.arm_agnle_control.arm_all_change([105, 50, 140, 180, 70])
+        # self.arm_commute_node.publish_arm_angle()
+        # time.sleep(0.5)
+        # self.arm_agnle_control.arm_all_change([105, 55, 135, 180, 70])
+        # self.arm_commute_node.publish_arm_angle()
+        # time.sleep(0.5)
+        # self.arm_agnle_control.arm_all_change([105, 65, 125, 180, 70])
+        # self.arm_commute_node.publish_arm_angle()
+        # time.sleep(0.5)
+        # self.arm_agnle_control.arm_all_change([105, 85, 100, 180, 70])
+        # self.arm_commute_node.publish_arm_angle()
+        # time.sleep(0.5)
+        # time.sleep(0.5)
+        return ArmGoal.Result(success=True, message="success")
+        # self.arm_agnle_control.arm_all_change([])
 
     def catch(self, should_cancel=lambda: False):
-        label = "ball"
+        label = "tennis"
         while self.depth > 0.4:
             print(self.depth)
             try:
@@ -167,7 +227,7 @@ class ArmAutoController:
         while 1:
             if should_cancel():
                 return ArmGoal.Result(success=False, message="Canceled by user")
-            self.follow_obj(label="ball", step=5)
+            self.follow_obj(label="tennis", step=5)
 
     def radians_to_degrees(self, radians_list):
         """Converts a list of angles from radians to degrees."""
@@ -185,13 +245,13 @@ class ArmAutoController:
             return []  # Or raise an error
 
     def grap(self):
-        self.arm_agnle_control.arm_index_change(4, 20.0)
+        self.arm_agnle_control.arm_index_change(4, 10.0)
         self.arm_commute_node.publish_arm_angle()
 
     def init_pose(self, grap=False):
         angle = self.arm_agnle_control.arm_default_change()
         if grap:
-            self.arm_agnle_control.arm_index_change(4, 20.0)
+            self.arm_agnle_control.arm_index_change(4, 10.0)
             self.arm_commute_node.publish_arm_angle()
             time.sleep(1.0)
         self.arm_commute_node.publish_arm_angle()

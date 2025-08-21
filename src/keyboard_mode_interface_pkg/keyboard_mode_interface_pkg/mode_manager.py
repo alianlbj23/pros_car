@@ -32,6 +32,7 @@ class ModeManager:
             arm_control_signal = f"{title}:{subtitle}"
             if (
                 title == "catch"
+                or title == "catch2"
                 or title == "wave"
                 or title == "object_follow"
                 or title == "init_pose"

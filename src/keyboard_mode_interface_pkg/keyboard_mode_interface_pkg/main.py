@@ -31,6 +31,7 @@ class MenuApp:
             },
             "Automatic Arm Mode": {
                 "catch": None,
+                "catch2": None,
                 "wave": None,
                 "init_pose": None,
                 "object_follow": None,
