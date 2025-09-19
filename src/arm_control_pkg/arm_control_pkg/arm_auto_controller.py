@@ -24,7 +24,7 @@ class ArmAutoController:
         time.sleep(0.5)
 
         angles = [105, 45, 145, 180, 70]
-        
+
         for i in range(8):
             self.arm_agnle_control.arm_all_change(angles)
             self.arm_commute_node.publish_arm_angle()
@@ -112,9 +112,38 @@ class ArmAutoController:
         time.sleep(1.0)
         self.init_pose(grap=True)
         time.sleep(1.0)
-        self.seek_arucode()
+
+
+
+        # 作弊------------------------------------
+        self.arm_agnle_control.arm_index_change(0, 0.0)
+        self.arm_commute_node.publish_arm_angle()
         time.sleep(0.5)
-        self.init_pose()
+
+        self.arm_agnle_control.arm_index_change(0, 5.0)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(1.0)
+
+        angles = [5, 80, 100, 180, 10]
+        self.arm_agnle_control.arm_all_change(angles)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(0.5)
+
+        self.arm_agnle_control.arm_index_change(4, 70.0)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(0.5)
+
+        self.init_pose(grap=False)
+        # 作弊----------------------------------
+
+        # for seek arucode-----------------
+        # self.seek_arucode()
+        # time.sleep(0.5)
+        # self.init_pose()
+
+
+
+        #--------------------------
         # self.rotate_car()
         # self.rotate_wrist()
         # time.sleep(0.2)
