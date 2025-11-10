@@ -53,8 +53,8 @@ fi
 if [ -e /dev/usb_rear_wheel ]; then
     device_options+=" --device=/dev/usb_rear_wheel"
 fi
-if [ -e /dev/usb_robot_arm ]; then
-    device_options+=" --device=/dev/usb_robot_arm"
+if [ -e /dev/ttyUSB0 ]; then
+    device_options+=" --device=/dev/ttyUSB0"
 fi
 
 # 根據不同架構選擇適當的 Docker 圖像

@@ -83,7 +83,7 @@ def main():
 
     # Set up device options
     device_options = ""
-    for device in ["/dev/usb_front_wheel", "/dev/usb_rear_wheel", "/dev/usb_robot_arm"]:
+    for device in ["/dev/usb_front_wheel", "/dev/usb_rear_wheel", "/dev/ttyUSB0"]:
         if os.path.exists(device):
             device_options += f" --device={device}"
 
