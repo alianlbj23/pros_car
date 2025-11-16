@@ -81,6 +81,8 @@ class ArmAutoController:
     def catch(self, should_cancel=lambda: False):
         label = "ball"
         while self.depth > 0.4:
+            if should_cancel():
+                return ArmGoal.Result(success=False, message="Canceled by user")
             print(self.depth)
             try:
                 self.depth = self.arm_commute_node.get_latest_object_coordinates(

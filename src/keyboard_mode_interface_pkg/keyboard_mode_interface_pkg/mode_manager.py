@@ -31,6 +31,7 @@ class ModeManager:
             if (
                 title == "catch"
                 or title == "catch2"
+                or title == "stop"
                 or title == "wave"
                 or title == "object_follow"
                 or title == "init_pose"
