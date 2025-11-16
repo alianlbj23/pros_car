@@ -21,5 +21,3 @@ class ArmMovement(Node):
         # 根據接收到的指令執行對應的自動手臂控制方法
         if command == "catch":
             self.arm_auto_controller.catch()
-        elif command == "wave":
-            self.arm_auto_controller.wave()

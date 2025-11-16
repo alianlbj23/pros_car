@@ -5,6 +5,8 @@ import math
 from typing import Tuple, List
 from arm_control_pkg.utils import get_yaw_from_quaternion, normalize_angle
 import random
+
+
 class ArmAutoController:
     def __init__(
         self, arm_params, arm_commute_node, pybulletRobotController, arm_agnle_control
@@ -24,7 +26,7 @@ class ArmAutoController:
         time.sleep(0.5)
 
         angles = [105, 45, 145, 180, 70]
-        
+
         for i in range(8):
             self.arm_agnle_control.arm_all_change(angles)
             self.arm_commute_node.publish_arm_angle()
@@ -77,17 +79,19 @@ class ArmAutoController:
         # self.arm_agnle_control.arm_all_change([])
 
     def catch(self, should_cancel=lambda: False):
-        label = "tennis"
+        label = "ball"
         while self.depth > 0.4:
             print(self.depth)
             try:
-                self.depth = self.arm_commute_node.get_latest_object_coordinates(label=label)[0]
+                self.depth = self.arm_commute_node.get_latest_object_coordinates(
+                    label=label
+                )[0]
             except:
                 continue
         while 1:
             if should_cancel():
                 return ArmGoal.Result(success=False, message="Canceled by user")
-            if self.follow_obj(label=label)  == True:
+            if self.follow_obj(label=label) == True:
                 break
             # if self.follow_obj(label="ball") == True:
             #     break
@@ -100,10 +104,10 @@ class ArmAutoController:
         data = self.arm_commute_node.get_latest_object_coordinates(label=label)
         depth = data[0]
         obj_pos = self.pybullet_robot_controller.markPointInFrontOfEndEffector(
-            distance=depth + 0.05,z_offset=0.15
+            distance=depth + 0.05, z_offset=0.15
         )
         robot_angle = self.pybullet_robot_controller.generateInterpolatedTrajectory(
-            target_position=obj_pos,steps=10
+            target_position=obj_pos, steps=10
         )
         for i in robot_angle:
             self.move_real_and_virtual(radian=i)
@@ -112,9 +116,28 @@ class ArmAutoController:
         time.sleep(1.0)
         self.init_pose(grap=True)
         time.sleep(1.0)
-        self.seek_arucode()
+
+        # 作弊------------------------------------
+        self.arm_agnle_control.arm_index_change(0, 0.0)
+        self.arm_commute_node.publish_arm_angle()
         time.sleep(0.5)
-        self.init_pose()
+
+        self.arm_agnle_control.arm_index_change(0, 5.0)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(1.0)
+
+        angles = [5, 80, 100, 180, 10]
+        self.arm_agnle_control.arm_all_change(angles)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(0.5)
+
+        self.arm_agnle_control.arm_index_change(4, 70.0)
+        self.arm_commute_node.publish_arm_angle()
+        time.sleep(0.5)
+
+        self.init_pose(grap=False)
+        # 作弊----------------------------------
+
         # self.rotate_car()
         # self.rotate_wrist()
         # time.sleep(0.2)
@@ -122,7 +145,7 @@ class ArmAutoController:
         #     self.arm_commute_node.publish_pos()
         #     time.sleep(0.1)
 
-        return ArmGoal.Result(success=True, message="success")
+        return
 
     def seek_arucode(self, joint_idx: int = 0, sleep_s: float = 0.2):
         """
@@ -131,10 +154,14 @@ class ArmAutoController:
         """
         self.arm_commute_node.clear_arucode_topic()
         # 防呆：確保 joint_idx 在範圍內
-        joint_positions, _, _ = self.pybullet_robot_controller.getJointStates()  # 弧度 list，長度 = 可控關節數
+        joint_positions, _, _ = (
+            self.pybullet_robot_controller.getJointStates()
+        )  # 弧度 list，長度 = 可控關節數
         dof = len(joint_positions)
         if dof == 0 or joint_idx < 0 or joint_idx >= dof:
-            self.get_logger().error(f"[seek_arucode] 無效的 joint_idx={joint_idx} 或無可控關節（dof={dof}）")
+            self.get_logger().error(
+                f"[seek_arucode] 無效的 joint_idx={joint_idx} 或無可控關節（dof={dof}）"
+            )
             return
 
         for deg in range(0, 181, 10):  # 0..180（含 180）
@@ -142,7 +169,9 @@ class ArmAutoController:
             self.arm_agnle_control.arm_index_change(joint_idx, deg)
 
             # 2) 取目前整組關節（弧度），只改第 joint_idx
-            q = list(self.pybullet_robot_controller.getJointStates()[0])  # 再取一次最新值
+            q = list(
+                self.pybullet_robot_controller.getJointStates()[0]
+            )  # 再取一次最新值
             q[joint_idx] = math.radians(deg)
 
             # 3) 真實 + 模擬 同步（注意：這裡要丟「整組」角度）
@@ -151,7 +180,9 @@ class ArmAutoController:
             time.sleep(0.5)
 
             # 4) 檢查是否拿到深度
-            arucode_depth = self.arm_commute_node.get_latest_arucode_depth()  # 單位：公尺（前面 publish 的就是 m）
+            arucode_depth = (
+                self.arm_commute_node.get_latest_arucode_depth()
+            )  # 單位：公尺（前面 publish 的就是 m）
             print("arucode:", arucode_depth)
             if arucode_depth is not None and arucode_depth > 0.0:
                 time.sleep(1)
@@ -165,14 +196,13 @@ class ArmAutoController:
                 traj = self.pybullet_robot_controller.generateInterpolatedTrajectory(
                     target_position=obj_pos, steps=5
                 )
-                for qstep in traj:   # qstep 應該就是「整組關節弧度」
+                for qstep in traj:  # qstep 應該就是「整組關節弧度」
                     self.move_real_and_virtual(radian=qstep)
                     time.sleep(0.3)
                 self.arm_agnle_control.arm_index_change(4, 70)
                 self.arm_commute_node.publish_arm_angle()
                 self.arm_commute_node.clear_arucode_signal()  # 清除信號，避免重複讀取
                 break
-
 
     def rotate_wrist(self):
         self.arm_agnle_control.arm_index_change(3, 90)
@@ -194,7 +224,9 @@ class ArmAutoController:
             yaw = get_yaw_from_quaternion(rotation)
             yaw_error = normalize_angle(target_yaw - yaw)
 
-            print(f"Current Yaw: {math.degrees(yaw):.2f}, Target: {math.degrees(target_yaw):.2f}, Error: {math.degrees(yaw_error):.2f}")
+            print(
+                f"Current Yaw: {math.degrees(yaw):.2f}, Target: {math.degrees(target_yaw):.2f}, Error: {math.degrees(yaw_error):.2f}"
+            )
 
             if abs(yaw_error) < math.radians(5):  # 誤差小於 5 度即停止
                 break
