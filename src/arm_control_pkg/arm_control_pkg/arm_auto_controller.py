@@ -75,7 +75,7 @@ class ArmAutoController:
         # self.arm_commute_node.publish_arm_angle()
         # time.sleep(0.5)
         # time.sleep(0.5)
-        return ArmGoal.Result(success=True, message="success")
+        return
         # self.arm_agnle_control.arm_all_change([])
 
     def catch(self, should_cancel=lambda: False):
