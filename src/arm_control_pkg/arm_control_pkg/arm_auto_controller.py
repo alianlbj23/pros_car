@@ -261,7 +261,7 @@ class ArmAutoController:
         while 1:
             if should_cancel():
                 return ArmGoal.Result(success=False, message="Canceled by user")
-            self.follow_obj(label="tennis", step=5)
+            self.follow_obj(label="ball", step=5)
 
     def radians_to_degrees(self, radians_list):
         """Converts a list of angles from radians to degrees."""

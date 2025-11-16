@@ -21,7 +21,7 @@ class ArmMovement(Node):
         command = msg.data
         self.get_logger().info(f"收到自動手臂控制指令: {command}")
 
-        # 如果正在做任務，阻擋新任務（stop 除外）
+        # 正在執行任務 → 阻擋新的任務（stop 除外）
         if command not in ["stop"]:
             if self.task_thread and self.task_thread.is_alive():
                 self.get_logger().info("手臂正在執行任務，請稍後再試")
@@ -44,7 +44,7 @@ class ArmMovement(Node):
             self.task_thread.start()
 
         # =====================================================================
-        # catch2（新增完成訊息）
+        # catch2
         # =====================================================================
         elif command == "catch2":
             self.stop_event.clear()
@@ -53,10 +53,26 @@ class ArmMovement(Node):
                 self.arm_auto_controller.catch2(
                     should_cancel=lambda: self.stop_event.is_set()
                 )
-                if not self.stop_event.is_set():  # 確保不是 stop 強制中斷
+                if not self.stop_event.is_set():
                     self.get_logger().info("catch2 任務完成")
 
             self.task_thread = threading.Thread(target=run_catch2)
+            self.task_thread.start()
+
+        # =====================================================================
+        # object_follow
+        # =====================================================================
+        elif command == "object_follow":
+            self.stop_event.clear()
+
+            def run_object_follow():
+                self.arm_auto_controller.object_follow(
+                    should_cancel=lambda: self.stop_event.is_set()
+                )
+                if not self.stop_event.is_set():
+                    self.get_logger().info("object_follow 任務完成")
+
+            self.task_thread = threading.Thread(target=run_object_follow)
             self.task_thread.start()
 
         # =====================================================================
